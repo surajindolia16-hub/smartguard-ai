@@ -3,48 +3,45 @@ import React, { useEffect, useState } from "react";
 export default function App() {
   const [queue, setQueue] = useState({ pending: [] });
 
-  const fetchQueue = async () => {
+  const loadQueue = async () => {
     const res = await fetch("http://localhost:5000/api/queue");
-    const data = await res.json();
-    setQueue(data);
+    setQueue(await res.json());
   };
 
   useEffect(() => {
-    fetchQueue();
-    const interval = setInterval(fetchQueue, 2000);
-    return () => clearInterval(interval);
+    loadQueue();
+    const t = setInterval(loadQueue, 2000);
+    return () => clearInterval(t);
   }, []);
 
-  const action = async (type, post) => {
+  const action = async (type, item) => {
     await fetch(`http://localhost:5000/api/${type}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(post)
+      body: JSON.stringify(item)
     });
 
-    fetchQueue();
+    loadQueue();
   };
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>🛡️ SmartGuard Moderator Dashboard (Devvit Ready)</h2>
+      <h2>🛡️ SmartGuard Devvit Moderator Dashboard</h2>
 
-      <h3>📌 Pending Queue</h3>
-
-      {queue.pending?.map((p) => (
-        <div key={p.id} style={{
+      {queue.pending.map(item => (
+        <div key={item.id} style={{
           border: "1px solid #ccc",
-          padding: 10,
-          margin: 10
+          margin: 10,
+          padding: 10
         }}>
-          <p><b>{p.text}</b></p>
+          <p><b>{item.text}</b></p>
 
-          <p>Status: {p.label}</p>
-          <p>Confidence: {p.confidence}</p>
+          <p>Status: {item.label}</p>
+          <p>Confidence: {item.confidence}</p>
 
-          <button onClick={() => action("approve", p)}>Approve</button>
-          <button onClick={() => action("remove", p)}>Remove</button>
-          <button onClick={() => action("review", p)}>Review</button>
+          <button onClick={() => action("approve", item)}>Approve</button>
+          <button onClick={() => action("remove", item)}>Remove</button>
+          <button onClick={() => action("review", item)}>Review</button>
         </div>
       ))}
     </div>
