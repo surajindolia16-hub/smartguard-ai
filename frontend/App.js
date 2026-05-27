@@ -1,96 +1,50 @@
 import React, { useEffect, useState } from "react";
 
 export default function App() {
-  const [feed, setFeed] = useState([]);
-  const [input, setInput] = useState("");
+  const [queue, setQueue] = useState({ pending: [] });
 
-  const samplePosts = [
-    "I love this platform",
-    "This is stupid system",
-    "Great innovation here",
-    "I hate this update",
-    "Amazing work team",
-    "This app is useless"
-  ];
-
-  const moderate = async (text) => {
-    const res = await fetch("http://localhost:5000/api/moderate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, userId: "user_1" })
-    });
-
-    return res.json();
+  const fetchQueue = async () => {
+    const res = await fetch("http://localhost:5000/api/queue");
+    const data = await res.json();
+    setQueue(data);
   };
 
   useEffect(() => {
-    const interval = setInterval(async () => {
-      const text =
-        samplePosts[Math.floor(Math.random() * samplePosts.length)];
-
-      const result = await moderate(text);
-
-      setFeed((prev) => [result, ...prev.slice(0, 6)]);
-    }, 1500);
-
+    fetchQueue();
+    const interval = setInterval(fetchQueue, 2000);
     return () => clearInterval(interval);
   }, []);
 
-  const sendPost = async () => {
-    const result = await moderate(input);
-    setFeed((prev) => [result, ...prev]);
-    setInput("");
+  const action = async (type, post) => {
+    await fetch(`http://localhost:5000/api/${type}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(post)
+    });
+
+    fetchQueue();
   };
 
   return (
-    <div style={{ padding: 20, fontFamily: "Arial" }}>
-      <h2>🛡️ SmartGuard AI — Humanized Moderation System</h2>
+    <div style={{ padding: 20 }}>
+      <h2>🛡️ SmartGuard Moderator Dashboard (Devvit Ready)</h2>
 
-      <div style={{ display: "flex", gap: 10 }}>
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Write a post..."
-        />
-        <button onClick={sendPost}>Post</button>
-      </div>
+      <h3>📌 Pending Queue</h3>
 
-      <hr />
+      {queue.pending?.map((p) => (
+        <div key={p.id} style={{
+          border: "1px solid #ccc",
+          padding: 10,
+          margin: 10
+        }}>
+          <p><b>{p.text}</b></p>
 
-      {feed.map((item, i) => (
-        <div
-          key={i}
-          style={{
-            borderLeft:
-              item.label === "TOXIC"
-                ? "5px solid red"
-                : item.label === "REVIEW"
-                ? "5px solid orange"
-                : "5px solid green",
-            padding: 10,
-            margin: 10,
-            background: "#f4f4f4"
-          }}
-        >
-          <b>{item.input}</b>
+          <p>Status: {p.label}</p>
+          <p>Confidence: {p.confidence}</p>
 
-          <p>
-            Status: <b>{item.label}</b>
-          </p>
-
-          <p>Action: {item.action}</p>
-          <p>Reason: {item.reason}</p>
-
-          {item.label === "REVIEW" && (
-            <small>⚠ Sent to human moderator queue</small>
-          )}
-
-          {item.matches && item.matches.length > 0 && (
-            <small>
-              Matched words:{" "}
-              {item.matches.map((m) => m.word).join(", ")}
-            </small>
-          )}
+          <button onClick={() => action("approve", p)}>Approve</button>
+          <button onClick={() => action("remove", p)}>Remove</button>
+          <button onClick={() => action("review", p)}>Review</button>
         </div>
       ))}
     </div>
