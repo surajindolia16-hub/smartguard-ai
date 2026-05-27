@@ -1,38 +1,26 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 
 export default function App() {
-  const [text, setText] = useState("");
-  const [out, setOut] = useState(null);
   const [stats, setStats] = useState(null);
 
-  const run = async () => {
-    const res = await fetch("http://localhost:5000/api/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text })
-    });
-
-    const json = await res.json();
-    setOut(json.data);
-  };
-
-  const loadStats = async () => {
-    const res = await fetch("http://localhost:5000/api/dashboard");
+  const load = async () => {
+    const res = await fetch("http://localhost:5000/dashboard");
     setStats(await res.json());
   };
 
   useEffect(() => {
-    loadStats();
-    const t = setInterval(loadStats, 4000);
+    load();
+    const t = setInterval(load, 3000);
     return () => clearInterval(t);
   }, []);
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>🛡️ SmartGuard Moderation System v15</h2>
+    <div style={{ padding: 30, fontFamily: "Arial" }}>
+      <h1>🛡️ SmartGuard V3 Dashboard</h1>
 
       {stats && (
-        <div style={{ background: "#eee", padding: 10 }}>
+        <div style={{ background: "#111", color: "white", padding: 20 }}>
+          <h3>Live Moderation Stats</h3>
           <p>SAFE: {stats.SAFE}</p>
           <p>REVIEW: {stats.REVIEW}</p>
           <p>TOXIC: {stats.TOXIC}</p>
@@ -40,24 +28,9 @@ export default function App() {
         </div>
       )}
 
-      <textarea
-        rows={4}
-        cols={50}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-      />
-
-      <br />
-      <button onClick={run}>Analyze</button>
-
-      {out && (
-        <div style={{ marginTop: 20 }}>
-          <p><b>Label:</b> {out.label}</p>
-          <p><b>Score:</b> {out.score}</p>
-          <p><b>Confidence:</b> {out.confidence}</p>
-          <p><b>Matches:</b> {out.hits.join(", ")}</p>
-        </div>
-      )}
+      <p style={{ marginTop: 20, opacity: 0.7 }}>
+        Real-time Devvit moderation analytics system
+      </p>
     </div>
   );
 }
