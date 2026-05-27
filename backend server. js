@@ -6,14 +6,14 @@ app.use(cors());
 app.use(express.json());
 
 /* =========================
-   MODERATION QUEUE (IMPORTANT)
+   MODERATION QUEUE
 ========================= */
 
 const queue = {
   pending: [],
+  review: [],
   approved: [],
-  removed: [],
-  review: []
+  removed: []
 };
 
 /* =========================
@@ -38,36 +38,35 @@ function analyze(text) {
     });
   }
 
-  // deterministic logic (IMPORTANT FOR JUDGES)
   let label = "SAFE";
+
   if (score >= 2) label = "TOXIC";
   else if (score === 1) label = "REVIEW";
-
-  let action =
-    label === "TOXIC" ? "BLOCK" :
-    label === "REVIEW" ? "HOLD" :
-    "ALLOW";
 
   return {
     text,
     label,
-    action,
-    confidence: Math.min(0.98, 0.6 + score * 0.2),
-    matches
+    confidence: Math.min(0.95, 0.6 + score * 0.2),
+    matches,
+    explanation: {
+      severe_hits: matches.filter(m => m.type === "severe").length,
+      mild_hits: matches.filter(m => m.type === "mild").length
+    }
   };
 }
 
 /* =========================
-   DEVVIT / POST INGESTION API
+   DEVVIT ANALYSIS API
 ========================= */
 
-app.post("/api/ingest", (req, res) => {
+app.post("/api/analyze", (req, res) => {
   const result = analyze(req.body.text);
 
   const item = {
     id: Date.now(),
-    text: req.body.text,
-    ...result
+    ...req.body,
+    ...result,
+    status: "PENDING"
   };
 
   queue.pending.unshift(item);
@@ -76,29 +75,26 @@ app.post("/api/ingest", (req, res) => {
 });
 
 /* =========================
-   MODERATOR ACTION SYSTEM
+   MOD ACTIONS
 ========================= */
 
 app.post("/api/approve", (req, res) => {
-  const post = req.body;
-  queue.approved.push(post);
-  res.json({ status: "approved" });
+  queue.approved.push(req.body);
+  res.json({ ok: true });
 });
 
 app.post("/api/remove", (req, res) => {
-  const post = req.body;
-  queue.removed.push(post);
-  res.json({ status: "removed" });
+  queue.removed.push(req.body);
+  res.json({ ok: true });
 });
 
 app.post("/api/review", (req, res) => {
-  const post = req.body;
-  queue.review.push(post);
-  res.json({ status: "review" });
+  queue.review.push(req.body);
+  res.json({ ok: true });
 });
 
 /* =========================
-   QUEUE FETCH (IMPORTANT FOR UI)
+   QUEUE FETCH
 ========================= */
 
 app.get("/api/queue", (req, res) => {
@@ -106,5 +102,5 @@ app.get("/api/queue", (req, res) => {
 });
 
 app.listen(5000, () => {
-  console.log("🚀 SmartGuard v3 LIVE");
+  console.log("🚀 SmartGuard Devvit System Running");
 });
