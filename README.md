@@ -88,9 +88,6 @@ Frontend Dashboard Update
 
 ---
 
-## 📸 UI Preview
-(Add screenshots of dashboard here)
-
 ---
 
 ## 🔥 Key Highlights (Why this project stands out)
