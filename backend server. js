@@ -1,0 +1,89 @@
+const express = require("express");
+const cors = require("cors");
+const tf = require("@tensorflow/tfjs");
+const toxicity = require("@tensorflow-models/toxicity");
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+let model;
+
+// Load ML model once
+(async () => {
+  model = await toxicity.load(0.9);
+  console.log("ML Model Loaded 🚀");
+})();
+
+// fallback rule engine
+const badWords = ["hate", "idiot", "stupid", "useless"];
+
+function ruleEngine(text) {
+  let score = 0;
+  badWords.forEach(w => {
+    if (text.toLowerCase().includes(w)) score++;
+  });
+  return score;
+}
+
+// MAIN API
+app.post("/api/moderate", async (req, res) => {
+  const { text, userId, postId, community } = req.body;
+
+  let mlResult = null;
+  let label = "SAFE";
+  let confidence = 0;
+
+  try {
+    if (model) {
+      const predictions = await model.classify([text]);
+      const toxic = predictions.find(p => p.label === "toxicity");
+      if (toxic) {
+        mlResult = toxic.results[0].match;
+        confidence = toxic.results[0].probabilities[1];
+      }
+    }
+  } catch (e) {}
+
+  const ruleScore = ruleEngine(text);
+
+  if (mlResult || ruleScore > 0) {
+    label = "TOXIC";
+  }
+
+  if (ruleScore === 1) label = "FLAGGED";
+
+  res.json({
+    input: text,
+    label,
+    confidence: confidence || (ruleScore ? 0.7 : 0.95),
+    reason: mlResult ? "ML detected toxicity" : "Rule engine detection",
+    meta: {
+      userId,
+      postId,
+      community
+    }
+  });
+});
+
+/* =========================
+   DEVVIT-LIKE SIMULATION LAYER
+========================= */
+
+let communityFeed = [];
+
+app.post("/api/post", (req, res) => {
+  const post = req.body;
+
+  communityFeed.unshift(post);
+
+  res.json({ success: true, feed: communityFeed });
+});
+
+app.get("/api/feed", (req, res) => {
+  res.json(communityFeed);
+});
+
+app.listen(5000, () => {
+  console.log("🚀 SmartGuard AI TOP 1% running on 5000");
+});
